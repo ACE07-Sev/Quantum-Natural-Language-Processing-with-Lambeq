@@ -2,16 +2,17 @@ import collections
 import pickle
 import warnings
 import os
+from random import shuffle
 
 import spacy
 from discopy.tensor import Tensor
 from discopy import Word
 from discopy.rigid import Functor
-from numpy import random, unique
 
 import matplotlib.pyplot as plt
 import numpy as np
-from lambeq import AtomicType, IQPAnsatz, remove_cups, NumpyModel
+from numpy import random, unique
+from lambeq import AtomicType, IQPAnsatz, remove_cups, NumpyModel, spiders_reader
 from lambeq import BobcatParser
 from lambeq import Dataset
 from lambeq import QuantumTrainer, SPSAOptimizer
@@ -24,14 +25,13 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"
 spacy.load('en_core_web_sm')
 
 BATCH_SIZE = 30
-EPOCHS = 220
-Tensor.np = np
-np.random.seed(7)  # Fix the seed
+EPOCHS = 300
+SEED = 0
 
 
 # Function for replacing low occuring word(s) with <unk> token
 def replace(box):
-    if isinstance(box, Word) and dataset.count(box.name) < 3:
+    if isinstance(box, Word) and dataset.count(box.name) < 1:
         return Word('unk', box.cod, box.dom)
     return box
 
@@ -54,6 +54,21 @@ train_labels, train_data = read_data('bc_train_data.txt')
 dev_labels, dev_data = read_data('bc_dev_data.txt')
 # test dataset
 test_labels, test_data = read_data('bc_test_data.txt')
+
+labels = train_labels + dev_labels + test_labels
+data = train_data + dev_data + test_data
+
+pairs = list(zip(labels, data))
+shuffle(pairs)
+print(len(pairs))
+
+N_EXAMPLES = len(pairs)
+
+# Shuffling datasets
+train_labels, train_data = zip(*pairs[:round(N_EXAMPLES * 0.4)])
+dev_labels, dev_data = zip(*pairs[round(N_EXAMPLES * 0.4):round(N_EXAMPLES * 0.8)])
+test_labels, test_data = zip(*pairs[round(N_EXAMPLES * 0.8):])
+
 # training set words (with repetition)
 train_data_string = ' '.join(train_data)
 train_data_list = train_data_string.split(' ')
@@ -92,12 +107,14 @@ dataset = train_data_list + dev_data_list + test_data_list
 unique_words = unique(dataset)
 # frequency for each unique word
 counter = collections.Counter(dataset)
+print(counter)
 
 # initializing the replace functor
 replace_functor = Functor(ob=lambda x: x, ar=replace)
 
 # initializing the parser
-parser = BobcatParser(model_name_or_path='C:/Users/elmm/Desktop/CQM/Model')
+# parser = BobcatParser(model_name_or_path='C:/Users/elmm/Desktop/CQM/Model')
+parser = spiders_reader
 
 # Bobcat Parsed Diagrams
 # parsing the dataset into sentence diagrams (requires Bobcat model to run locally)
@@ -128,14 +145,8 @@ for i in range(len(raw_test_diagrams)):
 # sample sentence diagram (entry 1)
 raw_train_diagrams[0].draw()
 
-# merging all diagrams into one for checking the new words (check for unk token)
+# merging all diagrams into one for checking the new words
 raw_all_diagrams = raw_train_diagrams + raw_dev_diagrams + raw_test_diagrams
-known_words = []
-known_words_list = []
-for i in range(len(raw_all_diagrams)):
-    known_words = [box.name for box in raw_all_diagrams[i].boxes if isinstance(box, Word)]
-    for j in range(len(known_words)):
-        known_words_list.append(known_words[j])
 
 # removing cups (after performing top-to-bottom scan of the word diagrams)
 train_diagrams = [remove_cups(diagram) for diagram in raw_train_diagrams]
@@ -146,7 +157,7 @@ test_diagrams = [remove_cups(diagram) for diagram in raw_test_diagrams]
 train_diagrams[0].draw()
 
 # initializing the ansatz for generating the circuit (1 layer, 3 qubits) (output : 1 qubit)
-ansatz = IQPAnsatz({AtomicType.NOUN: 1, AtomicType.SENTENCE: 1, AtomicType.PREPOSITIONAL_PHRASE: 1}, n_layers=2, n_single_qubit_params=3)
+ansatz = IQPAnsatz({AtomicType.NOUN: 1, AtomicType.SENTENCE: 1, AtomicType.PREPOSITIONAL_PHRASE: 1}, n_layers=1, n_single_qubit_params=3)
 
 # train/test circuits
 train_circuits = [ansatz(diagram) for diagram in train_diagrams]
@@ -182,7 +193,7 @@ trainer = QuantumTrainer(
     loss_function=loss,
     epochs=EPOCHS,
     optimizer=SPSAOptimizer,    # Simultaneous Perturbation Stochastic Approximation optimizer
-    optim_hyperparams={'a': 0.05, 'c': 0.06, 'A': 0.01 * EPOCHS},
+    optim_hyperparams={'a': 0.2, 'c': 0.06, 'A': 0.01 * EPOCHS},
     evaluate_functions={'acc': acc},
     evaluate_on_train=True,
     verbose='text',
@@ -193,7 +204,7 @@ train_dataset = Dataset(train_circuits, train_labels, batch_size=BATCH_SIZE)
 # validation dataset
 val_dataset = Dataset(dev_circuits, dev_labels, shuffle=False)
 # fitting the model (training on train and validation dataset)
-trainer.fit(train_dataset, val_dataset, logging_step=1)
+trainer.fit(train_dataset, val_dataset, logging_step=12)
 
 # plotting results
 fig, ((ax_tl, ax_tr), (ax_bl, ax_br)) = plt.subplots(2, 2, sharex=True, sharey='row', figsize=(10, 6))
