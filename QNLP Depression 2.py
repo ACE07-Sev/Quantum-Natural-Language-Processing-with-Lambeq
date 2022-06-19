@@ -1,4 +1,4 @@
-from lambeq import BobcatParser, TketModel, remove_cups, IQPAnsatz, AtomicType, NumpyModel
+from lambeq import BobcatParser, TketModel, remove_cups, IQPAnsatz, AtomicType, NumpyModel, spiders_reader
 import lambeq.tokeniser.spacy_tokeniser
 from pytket.extensions.qiskit import AerBackend
 from discopy import Word
@@ -24,7 +24,8 @@ def read_data(filename):
 
 
 # initializing the parser
-parser = BobcatParser(model_name_or_path='C:/Users/elmm/Desktop/CQM/Model')
+# parser = BobcatParser(model_name_or_path='C:/Users/elmm/Desktop/CQM/Model')
+parser = spiders_reader
 
 # initializing the web parser (uncomment only when using web parser and having a WSL interpreter)
 # parser = WebParser()
@@ -43,8 +44,9 @@ backend_config = {
 
 # Loading checkpoint model (220 epoch model)
 # model = TketModel.from_checkpoint('C:/Users/elmm/Desktop/CQM/runs/Jun08_16-58-26_LT-ELMM-T-MY/model.lt', backend_config=backend_config)
-model = NumpyModel.from_checkpoint('C:/Users/elmm/Desktop/CQM/runs/Jun17_23-11-53_LT-ELMM-T-MY/model.lt')
+model = NumpyModel.from_checkpoint('C:/Users/elmm/Desktop/CQM/runs/Jun19_00-59-09_LT-ELMM-T-MY/model.lt')
 
+print(model.symbols)
 # parsing the input (uncomment for using user input enabled feature)
 # diagram = parser.sentence2diagram(input_sentence)
 
@@ -115,7 +117,7 @@ diagram = remove_cups(replaced_diag)
 diagram.draw()
 
 # initializing the ansatz for generating the circuit (1 layer, 3 qubits) (output : 1 qubit)
-ansatz = IQPAnsatz({AtomicType.NOUN: 1, AtomicType.SENTENCE: 1, AtomicType.PREPOSITIONAL_PHRASE: 1}, n_layers=2, n_single_qubit_params=3)
+ansatz = IQPAnsatz({AtomicType.NOUN: 1, AtomicType.SENTENCE: 1, AtomicType.PREPOSITIONAL_PHRASE: 1}, n_layers=1, n_single_qubit_params=3)
 # converting the diagram to a circuit
 diagram = ansatz(diagram)
 # Circuit show
