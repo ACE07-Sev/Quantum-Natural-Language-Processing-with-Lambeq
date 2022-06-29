@@ -123,15 +123,6 @@ raw_train_diagrams = parser.sentences2diagrams(train_data)
 raw_dev_diagrams = parser.sentences2diagrams(dev_data)
 raw_test_diagrams = parser.sentences2diagrams(test_data)
 
-# Web Parsed Diagrams (alternative for Bobcat)(requires WSL to run locally)
-wp_train_diagrams = open("C:/Users/elmm/Desktop/CQM/train.pkl", "rb")
-wp_train_diagrams = pickle.load(wp_train_diagrams)
-
-wp_test_diagrams = open("C:/Users/elmm/Desktop/CQM/test.pkl", "rb")
-wp_test_diagrams = pickle.load(wp_test_diagrams)
-
-wp_dev_diagrams = open("C:/Users/elmm/Desktop/CQM/dev.pkl", "rb")
-wp_dev_diagrams = pickle.load(wp_dev_diagrams)
 
 # # Tokenizing low occuring words in each dataset
 for i in range(len(raw_train_diagrams)):
